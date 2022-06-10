@@ -10,18 +10,19 @@ import (
 )
 
 type approvalEnvironment struct {
-	client              *github.Client
-	repoFullName        string
-	repo                string
-	repoOwner           string
-	runID               int
-	approvers           []string
-	minimumApprovals    int
-	approvalIssue       *github.Issue
-	approvalIssueNumber int
+	client                  *github.Client
+	repoFullName            string
+	repo                    string
+	repoOwner               string
+	runID                   int
+	approvers               []string
+	minimumApprovals        int
+	approvalIssue           *github.Issue
+	approvalIssueNumber     int
+	mutlipleDeploymentNames []string
 }
 
-func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner string, runID int, approvers []string, minimumApprovals int) (*approvalEnvironment, error) {
+func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner string, runID int, approvers []string, minimumApprovals int, mutlipleDeploymentNames []string) (*approvalEnvironment, error) {
 	repoOwnerAndName := strings.Split(repoFullName, "/")
 	if len(repoOwnerAndName) != 2 {
 		return nil, fmt.Errorf("repo owner and name in unexpected format: %s", repoFullName)
@@ -29,13 +30,14 @@ func newApprovalEnvironment(client *github.Client, repoFullName, repoOwner strin
 	repo := repoOwnerAndName[1]
 
 	return &approvalEnvironment{
-		client:           client,
-		repoFullName:     repoFullName,
-		repo:             repo,
-		repoOwner:        repoOwner,
-		runID:            runID,
-		approvers:        approvers,
-		minimumApprovals: minimumApprovals,
+		client:                  client,
+		repoFullName:            repoFullName,
+		repo:                    repo,
+		repoOwner:               repoOwner,
+		runID:                   runID,
+		approvers:               approvers,
+		minimumApprovals:        minimumApprovals,
+		mutlipleDeploymentNames: mutlipleDeploymentNames,
 	}, nil
 }
 
@@ -45,16 +47,23 @@ func (a approvalEnvironment) runURL() string {
 
 func (a *approvalEnvironment) createApprovalIssue(ctx context.Context) error {
 	issueTitle := fmt.Sprintf("Manual approval required for workflow run %d", a.runID)
+	issueMultipleDeployment := []string{"-"}
+	if len(a.mutlipleDeploymentNames) > 0 {
+		issueMultipleDeployment = a.mutlipleDeploymentNames
+	}
 	issueBody := fmt.Sprintf(`Workflow is pending manual review.
 URL: %s
 
 Required approvers: %s
 
+Multiple deployment: %s
+
 Respond %s to continue workflow or %s to cancel.`,
 		a.runURL(),
 		a.approvers,
-		formatAcceptedWords(approvedWords),
-		formatAcceptedWords(deniedWords),
+		issueMultipleDeployment,
+		formatAcceptedWords(approvedWords, a.mutlipleDeploymentNames),
+		formatAcceptedWords(deniedWords, []string{}),
 	)
 	var err error
 	fmt.Printf(
@@ -152,11 +161,23 @@ func isDenied(commentBody string) (bool, error) {
 	return false, nil
 }
 
-func formatAcceptedWords(words []string) string {
+func formatAcceptedWords(words []string, multipleDeploymentNames []string) string {
 	var quotedWords []string
 
+	var deploymentNames string
+	if len(multipleDeploymentNames) > 1 {
+		deploymentNames += "["
+		for i, v := range multipleDeploymentNames {
+			deploymentNames += v
+			if i != len(multipleDeploymentNames)-1 {
+				deploymentNames += ","
+			}
+		}
+		deploymentNames += "]"
+	}
+
 	for _, word := range words {
-		quotedWords = append(quotedWords, fmt.Sprintf("\"%s\"", word))
+		quotedWords = append(quotedWords, fmt.Sprintf("\"%s%s\"", word, deploymentNames))
 	}
 
 	return strings.Join(quotedWords, ", ")

@@ -135,9 +135,17 @@ func main() {
 	if minimumApprovals > len(approvers) {
 		fmt.Printf("error: minimum required approvals (%v) is greater than the total number of approvers (%v)\n", minimumApprovals, len(approvers))
 		os.Exit(1)
+	}	
+
+
+	multipleDeploymentNamesRaw := os.Getenv(envMultipleDeploymentNames)
+	var multipleDeploymentNames []string
+	if multipleDeploymentNamesRaw != ""{
+		fmt.Printf("Multiple deployment names: %s\n", multipleDeploymentNamesRaw)
+		multipleDeploymentNames = strings.Split(multipleDeploymentNamesRaw, ",")
 	}
 
-	apprv, err := newApprovalEnvironment(client, repoFullName, repoOwner, runID, approvers, minimumApprovals)
+	apprv, err := newApprovalEnvironment(client, repoFullName, repoOwner, runID, approvers, minimumApprovals, multipleDeploymentNames)
 	if err != nil {
 		fmt.Printf("error creating approval environment: %v\n", err)
 		os.Exit(1)
