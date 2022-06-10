@@ -111,7 +111,7 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 			re := regexp.MustCompile(`\[(.*)\]`)
 			matches := re.FindStringSubmatch(deploymentNamesRaw)
 			if len(matches) != 2 {
-				return approvalStatusPending, []string{},fmt.Errorf("errors.comment by not valid")
+				return approvalStatusPending, []string{},fmt.Errorf("errors.comment body is not valid")
 			}
 
 			validDeploymentNamesMap := make(map[string]bool) 

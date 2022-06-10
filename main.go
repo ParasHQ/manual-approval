@@ -51,6 +51,12 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 			fmt.Printf("Workflow status: %s\n", approved)
 			switch approved {
 			case approvalStatusApproved:
+				if len(apprv.mutlipleDeploymentNames) > 0  && len(deploymentNames) == 0{
+					fmt.Println("errors.please choose at least 1 of the multiple deployment names")
+					channel <- 1
+					close(channel)
+				} 
+
 				newState := "closed"
 				closeComment := "All approvers have approved, continuing workflow and closing this issue."
 				_, _, err := client.Issues.CreateComment(ctx, apprv.repoOwner, apprv.repo, apprv.approvalIssueNumber, &github.IssueComment{
