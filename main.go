@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -51,11 +52,11 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 			fmt.Printf("Workflow status: %s\n", approved)
 			switch approved {
 			case approvalStatusApproved:
-				if len(apprv.mutlipleDeploymentNames) > 0  && len(deploymentNames) == 0{
+				if len(apprv.mutlipleDeploymentNames) > 0 && len(deploymentNames) == 0 {
 					fmt.Println("errors.please choose at least 1 of the multiple deployment names")
 					channel <- 1
 					close(channel)
-				} 
+				}
 
 				newState := "closed"
 				closeComment := "All approvers have approved, continuing workflow and closing this issue."
@@ -75,10 +76,11 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 				}
 				channel <- 0
 				if len(deploymentNames) > 0 {
-					fmt.Println(deploymentNames)
-				} else {
-					fmt.Println("Workflow manual approval completed")
+					jsonDeploymentNames, _ := json.Marshal(deploymentNames)
+					fmt.Printf("::set-output name=DEPLOYMENT_NAMES::%s", jsonDeploymentNames)
 				}
+
+				fmt.Println("Workflow manual approval completed")
 				close(channel)
 			case approvalStatusDenied:
 				newState := "closed"

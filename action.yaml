@@ -15,4 +15,4 @@ inputs:
     required: false
 runs:
   using: docker
-  image: docker://haffjjj/manual-approval:1.0.1
+  image: docker://haffjjj/manual-approval:1.0.2
