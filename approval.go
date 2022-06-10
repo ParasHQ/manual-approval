@@ -114,7 +114,7 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 				return approvalStatusPending, []string{},fmt.Errorf("errors.comment by not valid")
 			}
 
-			var validDeploymentNamesMap map[string]bool
+			validDeploymentNamesMap := make(map[string]bool) 
 			for _, v := range multipleDeploymentNames {
 				validDeploymentNamesMap[v] = true
 			}
