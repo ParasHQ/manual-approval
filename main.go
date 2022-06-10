@@ -77,7 +77,7 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 				channel <- 0
 				if len(deploymentNames) > 0 {
 					jsonDeploymentNames, _ := json.Marshal(deploymentNames)
-					fmt.Printf("::set-output name=DEPLOYMENT_NAMES::%s", jsonDeploymentNames)
+					fmt.Println(fmt.Sprintf("::set-output name=DEPLOYMENT_NAMES::%s", jsonDeploymentNames))
 				}
 
 				fmt.Println("Workflow manual approval completed")
