@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -42,7 +43,7 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 				close(channel)
 			}
 
-			approved, err := approvalFromComments(comments, approvers, minimumApprovals)
+			approved, deploymentNames, err := approvalFromComments(comments, approvers, minimumApprovals, apprv.mutlipleDeploymentNames)
 			if err != nil {
 				fmt.Printf("error getting approval from comments: %v\n", err)
 				channel <- 1
@@ -51,6 +52,12 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 			fmt.Printf("Workflow status: %s\n", approved)
 			switch approved {
 			case approvalStatusApproved:
+				if len(apprv.mutlipleDeploymentNames) > 0 && len(deploymentNames) == 0 {
+					fmt.Println("errors.please choose at least 1 of the multiple deployment names")
+					channel <- 1
+					close(channel)
+				}
+
 				newState := "closed"
 				closeComment := "All approvers have approved, continuing workflow and closing this issue."
 				_, _, err := client.Issues.CreateComment(ctx, apprv.repoOwner, apprv.repo, apprv.approvalIssueNumber, &github.IssueComment{
@@ -68,6 +75,11 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 					close(channel)
 				}
 				channel <- 0
+				if len(deploymentNames) > 0 {
+					jsonDeploymentNames, _ := json.Marshal(deploymentNames)
+					fmt.Println(fmt.Sprintf("::set-output name=DEPLOYMENT_NAMES::%s", jsonDeploymentNames))
+				}
+
 				fmt.Println("Workflow manual approval completed")
 				close(channel)
 			case approvalStatusDenied:
@@ -137,7 +149,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	apprv, err := newApprovalEnvironment(client, repoFullName, repoOwner, runID, approvers, minimumApprovals)
+	multipleDeploymentNamesRaw := os.Getenv(envMultipleDeploymentNames)
+	var multipleDeploymentNames []string
+	if multipleDeploymentNamesRaw != "" {
+		fmt.Printf("Multiple deployment names: %s\n", multipleDeploymentNamesRaw)
+		multipleDeploymentNames = strings.Split(multipleDeploymentNamesRaw, ",")
+	}
+
+	apprv, err := newApprovalEnvironment(client, repoFullName, repoOwner, runID, approvers, minimumApprovals, multipleDeploymentNames)
 	if err != nil {
 		fmt.Printf("error creating approval environment: %v\n", err)
 		os.Exit(1)

@@ -10,6 +10,9 @@ inputs:
   minimum-approvals:
     description: Minimum number of approvals to progress workflow
     required: false
+  multiple-deployment-names:
+    description: Return the target deployment name 
+    required: false
 runs:
   using: docker
-  image: docker://ghcr.io/trstringer/manual-approval:1.4.0
+  image: docker://haffjjj/manual-approval:1.0.3
