@@ -42,7 +42,7 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 				close(channel)
 			}
 
-			approved, err := approvalFromComments(comments, approvers, minimumApprovals)
+			approved, deploymentNames, err := approvalFromComments(comments, approvers, minimumApprovals, apprv.mutlipleDeploymentNames)
 			if err != nil {
 				fmt.Printf("error getting approval from comments: %v\n", err)
 				channel <- 1
@@ -68,7 +68,11 @@ func newCommentLoopChannel(ctx context.Context, apprv *approvalEnvironment, clie
 					close(channel)
 				}
 				channel <- 0
-				fmt.Println("Workflow manual approval completed")
+				if len(deploymentNames) > 0 {
+					fmt.Println(deploymentNames)
+				} else {
+					fmt.Println("Workflow manual approval completed")
+				}
 				close(channel)
 			case approvalStatusDenied:
 				newState := "closed"
@@ -135,12 +139,11 @@ func main() {
 	if minimumApprovals > len(approvers) {
 		fmt.Printf("error: minimum required approvals (%v) is greater than the total number of approvers (%v)\n", minimumApprovals, len(approvers))
 		os.Exit(1)
-	}	
-
+	}
 
 	multipleDeploymentNamesRaw := os.Getenv(envMultipleDeploymentNames)
 	var multipleDeploymentNames []string
-	if multipleDeploymentNamesRaw != ""{
+	if multipleDeploymentNamesRaw != "" {
 		fmt.Printf("Multiple deployment names: %s\n", multipleDeploymentNamesRaw)
 		multipleDeploymentNames = strings.Split(multipleDeploymentNamesRaw, ",")
 	}

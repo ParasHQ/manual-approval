@@ -162,7 +162,7 @@ func TestApprovalFromComments(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			actual, err := approvalFromComments(testCase.comments, testCase.approvers, testCase.minimumApprovals)
+			actual, _, err := approvalFromComments(testCase.comments, testCase.approvers, testCase.minimumApprovals, []string{})
 			if err != nil {
 				t.Fatalf("error getting approval from comments: %v", err)
 			}

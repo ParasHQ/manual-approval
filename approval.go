@@ -83,7 +83,7 @@ Respond %s to continue workflow or %s to cancel.`,
 	return err
 }
 
-func approvalFromComments(comments []*github.IssueComment, approvers []string, minimumApprovals int) (approvalStatus, error) {
+func approvalFromComments(comments []*github.IssueComment, approvers []string, minimumApprovals int, multipleDeploymentNames []string) (approvalStatus approvalStatus, deploymentNames []string, error error) {
 	remainingApprovers := make([]string, len(approvers))
 	copy(remainingApprovers, approvers)
 
@@ -99,13 +99,41 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 		}
 
 		commentBody := comment.GetBody()
+
+		var bodyDeploymentNames []string
+		if strings.Contains(commentBody, "[") && len(multipleDeploymentNames) != 0 {
+			commentBodySplit := strings.Split(commentBody, "[")
+			commentBody = commentBodySplit[0]
+
+			deploymentNamesRaw := "["
+			deploymentNamesRaw += commentBodySplit[1]
+
+			re := regexp.MustCompile(`\[(.*)\]`)
+			matches := re.FindStringSubmatch(deploymentNamesRaw)
+			if len(matches) != 2 {
+				return approvalStatusPending, []string{},fmt.Errorf("errors.comment by not valid")
+			}
+
+			var validDeploymentNamesMap map[string]bool
+			for _, v := range multipleDeploymentNames {
+				validDeploymentNamesMap[v] = true
+			}
+			deploymentNames := strings.Split(matches[1], ",")
+			for _, v := range deploymentNames {
+				if !validDeploymentNamesMap[v] {
+					return approvalStatusPending, []string{},fmt.Errorf("errors.deployment name is invalid")
+				}
+				bodyDeploymentNames = append(bodyDeploymentNames, v)
+			}
+		}
+
 		isApprovalComment, err := isApproved(commentBody)
 		if err != nil {
-			return approvalStatusPending, err
+			return approvalStatusPending, []string{},  err
 		}
 		if isApprovalComment {
 			if len(remainingApprovers) == len(approvers)-minimumApprovals+1 {
-				return approvalStatusApproved, nil
+				return approvalStatusApproved, bodyDeploymentNames, nil
 			}
 			remainingApprovers[approverIdx] = remainingApprovers[len(remainingApprovers)-1]
 			remainingApprovers = remainingApprovers[:len(remainingApprovers)-1]
@@ -114,14 +142,14 @@ func approvalFromComments(comments []*github.IssueComment, approvers []string, m
 
 		isDenialComment, err := isDenied(commentBody)
 		if err != nil {
-			return approvalStatusPending, err
+			return approvalStatusPending, []string{}, err
 		}
 		if isDenialComment {
-			return approvalStatusDenied, nil
+			return approvalStatusDenied, []string{}, nil
 		}
 	}
 
-	return approvalStatusPending, nil
+	return approvalStatusPending, []string{}, nil
 }
 
 func approversIndex(approvers []string, name string) int {
